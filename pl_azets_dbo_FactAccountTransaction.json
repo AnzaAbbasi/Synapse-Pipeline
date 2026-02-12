@@ -1,0 +1,234 @@
+{
+    "name": "pl_azets_dbo_FactAccountTransaction",
+    "properties": {
+        "activities": [
+            {
+                "name": "Stage AccountTransactions",
+                "type": "ExecutePipeline",
+                "dependsOn": [],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "pl_azets_stage_accounttransactions",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true,
+                    "parameters": {
+                        "folderpath_destination": {
+                            "value": "@pipeline().parameters.folderpath_destination",
+                            "type": "Expression"
+                        },
+                        "folderpath_source": {
+                            "value": "@pipeline().parameters.folderpath_source",
+                            "type": "Expression"
+                        },
+                        "filename_prefix": {
+                            "value": "@pipeline().parameters.filename_prefix",
+                            "type": "Expression"
+                        },
+                        "Environment": {
+                            "value": "@pipeline().parameters.Environment",
+                            "type": "Expression"
+                        }
+                    }
+                }
+            },
+            {
+                "name": "Update FactAccountTransaction",
+                "type": "SqlServerStoredProcedure",
+                "dependsOn": [
+                    {
+                        "activity": "Update temp AccountTransactions",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 2,
+                    "retryIntervalInSeconds": 120,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "storedProcedureName": {
+                        "value": "@pipeline().parameters.stored_procedure_dbo",
+                        "type": "Expression"
+                    },
+                    "storedProcedureParameters": {
+                        "RunId": {
+                            "value": {
+                                "value": "@pipeline().RunId",
+                                "type": "Expression"
+                            },
+                            "type": "String"
+                        }
+                    }
+                },
+                "linkedServiceName": {
+                    "referenceName": "ls_dwh_RH_source",
+                    "type": "LinkedServiceReference",
+                    "parameters": {
+                        "environment": {
+                            "value": "@pipeline().parameters.Environment",
+                            "type": "Expression"
+                        }
+                    }
+                }
+            },
+            {
+                "name": "Update temp AccountTransactions",
+                "type": "SqlServerStoredProcedure",
+                "dependsOn": [
+                    {
+                        "activity": "Backup table",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 2,
+                    "retryIntervalInSeconds": 120,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "storedProcedureName": "[temp].[update_AccountTransactions]"
+                },
+                "linkedServiceName": {
+                    "referenceName": "ls_dwh_RH_source",
+                    "type": "LinkedServiceReference",
+                    "parameters": {
+                        "environment": {
+                            "value": "@pipeline().parameters.Environment",
+                            "type": "Expression"
+                        }
+                    }
+                }
+            },
+            {
+                "name": "Wait to make sure Staging is complete",
+                "description": "Without waiting the stored procedure started before data was available in the DWH",
+                "type": "Wait",
+                "dependsOn": [
+                    {
+                        "activity": "Stage AccountTransactions",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "userProperties": [],
+                "typeProperties": {
+                    "waitTimeInSeconds": 360
+                }
+            },
+            {
+                "name": "Backup table",
+                "type": "SqlPoolStoredProcedure",
+                "dependsOn": [
+                    {
+                        "activity": "Wait to make sure Staging is complete",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "sqlPool": {
+                    "referenceName": "sqlPoolbiqsrprod",
+                    "type": "SqlPoolReference"
+                },
+                "typeProperties": {
+                    "storedProcedureName": "[dbo].[sp_BackupTableDaily]",
+                    "storedProcedureParameters": {
+                        "BackupTablePrefix": {
+                            "value": "DailyBackup_",
+                            "type": "String"
+                        },
+                        "SchemaName": {
+                            "value": "dbo",
+                            "type": "String"
+                        },
+                        "SourceTableName": {
+                            "value": "FactAccountTransaction",
+                            "type": "String"
+                        }
+                    }
+                }
+            }
+        ],
+        "parameters": {
+            "folderpath_destination": {
+                "type": "string",
+                "defaultValue": "staging/recurring/ftp_azets/AccountTransactions"
+            },
+            "folderpath_source": {
+                "type": "string",
+                "defaultValue": "AccountTransactions"
+            },
+            "filename_prefix": {
+                "type": "string",
+                "defaultValue": "AccountTransactions_BK"
+            },
+            "Environment": {
+                "type": "string",
+                "defaultValue": "dev"
+            },
+            "stored_procedure_dbo": {
+                "type": "string",
+                "defaultValue": "[dbo].[factupdate_FactAccountTransaction]"
+            },
+            "schema_stage": {
+                "type": "string",
+                "defaultValue": "stage"
+            },
+            "schema_dbo": {
+                "type": "string",
+                "defaultValue": "dbo"
+            },
+            "table_name_dbo": {
+                "type": "string",
+                "defaultValue": "FactAccountTransaction"
+            }
+        },
+        "variables": {
+            "StageFileName": {
+                "type": "String"
+            },
+            "LastUpdatedDate": {
+                "type": "String"
+            },
+            "LastUpdatedTime": {
+                "type": "String"
+            },
+            "LastUpdatedDateDK": {
+                "type": "String"
+            },
+            "LastUpdatedTimeDK": {
+                "type": "String"
+            }
+        },
+        "folder": {
+            "name": "Fact/FactAccountTransactions"
+        },
+        "annotations": [],
+        "lastPublishTime": "2025-03-20T11:10:33Z"
+    },
+    "type": "Microsoft.Synapse/workspaces/pipelines"
+}

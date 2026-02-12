@@ -1,0 +1,372 @@
+{
+    "name": "pl_azets_stage_accounttransactions_country",
+    "properties": {
+        "activities": [
+            {
+                "name": "Get list of files in Azets source",
+                "type": "GetMetadata",
+                "dependsOn": [
+                    {
+                        "activity": "Set LastUpdatedDate",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    },
+                    {
+                        "activity": "Set LastUpdatedTime",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "dataset": {
+                        "referenceName": "ds_csv_sftp_azets_source",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "folder_name": {
+                                "value": "@pipeline().parameters.folder_name_source",
+                                "type": "Expression"
+                            },
+                            "file_name": "*",
+                            "Username": {
+                                "value": "@pipeline().parameters.ftp_username",
+                                "type": "Expression"
+                            },
+                            "SecretName": {
+                                "value": "@pipeline().parameters.ftp_secret_name",
+                                "type": "Expression"
+                            }
+                        }
+                    },
+                    "fieldList": [
+                        "childItems"
+                    ],
+                    "storeSettings": {
+                        "type": "SftpReadSettings",
+                        "recursive": true,
+                        "enablePartitionDiscovery": false,
+                        "disableChunking": false
+                    },
+                    "formatSettings": {
+                        "type": "DelimitedTextReadSettings"
+                    }
+                }
+            },
+            {
+                "name": "Filter for country",
+                "type": "Filter",
+                "dependsOn": [
+                    {
+                        "activity": "Get list of files in Azets source",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "userProperties": [],
+                "typeProperties": {
+                    "items": {
+                        "value": "@activity('Get list of files in Azets source').output.childItems",
+                        "type": "Expression"
+                    },
+                    "condition": {
+                        "value": "@and(\n    and(\n        equals(\n            item().type,\n            'File'\n        ),\n        endswith(\n            item().name,\n            '.csv'\n        )\n    ),\nstartswith(item().name,concat(pipeline().parameters.filename_prefix,'_',pipeline().parameters.country))\n)",
+                        "type": "Expression"
+                    }
+                }
+            },
+            {
+                "name": "For each csv file",
+                "type": "ForEach",
+                "dependsOn": [
+                    {
+                        "activity": "Only files after last in table",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "userProperties": [],
+                "typeProperties": {
+                    "items": {
+                        "value": "@activity('Only files after last in table').output.value",
+                        "type": "Expression"
+                    },
+                    "isSequential": true,
+                    "activities": [
+                        {
+                            "name": "pl_azets_stage",
+                            "type": "ExecutePipeline",
+                            "dependsOn": [],
+                            "policy": {
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "pipeline": {
+                                    "referenceName": "pl_azets_stage",
+                                    "type": "PipelineReference"
+                                },
+                                "waitOnCompletion": true,
+                                "parameters": {
+                                    "file_source": {
+                                        "value": "@item().name",
+                                        "type": "Expression"
+                                    },
+                                    "file_stage": {
+                                        "value": "@replace(item().name,'.csv','.parquet')",
+                                        "type": "Expression"
+                                    },
+                                    "folder_source": {
+                                        "value": "@pipeline().parameters.folder_name_source",
+                                        "type": "Expression"
+                                    },
+                                    "table_destination": {
+                                        "value": "@pipeline().parameters.table_name_stage",
+                                        "type": "Expression"
+                                    },
+                                    "folder_destination": "staging/recurring/ftp_azets/AccountTransactions",
+                                    "folder_logging_deletedfiles": "synapse/logging ",
+                                    "schema_destination": {
+                                        "value": "@pipeline().parameters.schema_stage",
+                                        "type": "Expression"
+                                    },
+                                    "ftp_username": {
+                                        "value": "@pipeline().parameters.ftp_username",
+                                        "type": "Expression"
+                                    },
+                                    "ftp_secret_name": {
+                                        "value": "@pipeline().parameters.ftp_secret_name",
+                                        "type": "Expression"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                "name": "Get last updated date and time",
+                "type": "Lookup",
+                "dependsOn": [
+                    {
+                        "activity": "Truncate stage table",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "SqlDWSource",
+                        "sqlReaderQuery": {
+                            "value": "SELECT MAX(CONCAT(FileDate,'-',FileTime)) LastFileTimestamp\nFROM [dbo].[FactAccountTransaction]\nWHERE Country = '@{pipeline().parameters.country}'",
+                            "type": "Expression"
+                        },
+                        "queryTimeout": "02:00:00",
+                        "partitionOption": "None"
+                    },
+                    "dataset": {
+                        "referenceName": "ds_dwh_table_RH",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "TableName": "FactAccountTransaction"
+                        }
+                    },
+                    "firstRowOnly": true
+                }
+            },
+            {
+                "name": "Set LastUpdatedDate",
+                "type": "SetVariable",
+                "dependsOn": [
+                    {
+                        "activity": "Get last updated date and time",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "variableName": "LastUpdatedDate",
+                    "value": {
+                        "value": "@first(\n    split(\n        activity('Get last updated date and time').output.firstRow.LastFileTimestamp,\n        '-')\n    )",
+                        "type": "Expression"
+                    }
+                }
+            },
+            {
+                "name": "Set LastUpdatedTime",
+                "type": "SetVariable",
+                "dependsOn": [
+                    {
+                        "activity": "Get last updated date and time",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "variableName": "LastUpdatedTime",
+                    "value": {
+                        "value": "@last(\n    split(\n        activity('Get last updated date and time').output.firstRow.LastFileTimestamp,\n        '-')\n    )",
+                        "type": "Expression"
+                    }
+                }
+            },
+            {
+                "name": "Only files after last in table",
+                "type": "Filter",
+                "dependsOn": [
+                    {
+                        "activity": "Filter for country",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "userProperties": [],
+                "typeProperties": {
+                    "items": {
+                        "value": "@activity('Filter for country').output.value",
+                        "type": "Expression"
+                    },
+                    "condition": {
+                        "value": "@greater(\n    replace(last(split(item().name,'_')),'.csv',''),\n    concat(variables('LastUpdatedDate'),'-',variables('LastUpdatedTime'))\n)",
+                        "type": "Expression"
+                    }
+                }
+            },
+            {
+                "name": "Truncate stage table",
+                "type": "Lookup",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 2,
+                    "retryIntervalInSeconds": 120,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "SqlDWSource",
+                        "sqlReaderQuery": {
+                            "value": "IF\nobject_id('@{pipeline().parameters.schema_stage}.@{pipeline().parameters.table_name_stage}') \nIS NOT NULL\nEXEC('TRUNCATE TABLE @{pipeline().parameters.schema_stage}.@{pipeline().parameters.table_name_stage}')\n\nSELECT 0",
+                            "type": "Expression"
+                        },
+                        "queryTimeout": "02:00:00",
+                        "partitionOption": "None"
+                    },
+                    "dataset": {
+                        "referenceName": "ds_dwh_temptable_RH",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "ds_table_name": {
+                                "value": "@pipeline().parameters.table_name_stage",
+                                "type": "Expression"
+                            },
+                            "ds_schema_name": {
+                                "value": "@pipeline().parameters.schema_stage",
+                                "type": "Expression"
+                            }
+                        }
+                    }
+                }
+            }
+        ],
+        "parameters": {
+            "folder_name_staging_root": {
+                "type": "string",
+                "defaultValue": "staging/recurring/ftp_azets"
+            },
+            "folder_name_source": {
+                "type": "string",
+                "defaultValue": "AccountTransactions"
+            },
+            "table_name_stage": {
+                "type": "string",
+                "defaultValue": "Azets_AccountTransactionsNO"
+            },
+            "table_name_dbo": {
+                "type": "string",
+                "defaultValue": "FactAccountTransaction"
+            },
+            "schema_stage": {
+                "type": "string",
+                "defaultValue": "stage"
+            },
+            "schema_dbo": {
+                "type": "string",
+                "defaultValue": "dbo"
+            },
+            "country": {
+                "type": "string",
+                "defaultValue": "NO"
+            },
+            "ftp_username": {
+                "type": "string",
+                "defaultValue": "59075960"
+            },
+            "ftp_secret_name": {
+                "type": "string",
+                "defaultValue": "AzetsFTP-Password"
+            },
+            "filename_prefix": {
+                "type": "string",
+                "defaultValue": "AccountTransactions_BK"
+            }
+        },
+        "variables": {
+            "StageFileName": {
+                "type": "String"
+            },
+            "LastUpdatedDate": {
+                "type": "String"
+            },
+            "LastUpdatedTime": {
+                "type": "String"
+            },
+            "LastUpdatedDateDK": {
+                "type": "String"
+            },
+            "LastUpdatedTimeDK": {
+                "type": "String"
+            }
+        },
+        "folder": {
+            "name": "Staging/Azets"
+        },
+        "annotations": [],
+        "lastPublishTime": "2024-07-01T17:17:05Z"
+    },
+    "type": "Microsoft.Synapse/workspaces/pipelines"
+}

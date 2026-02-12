@@ -1,0 +1,326 @@
+{
+    "name": "pl_sharepoint_stage_dimCurrency",
+    "properties": {
+        "activities": [
+            {
+                "name": "loadDimCurrency",
+                "type": "Copy",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "SharePointOnlineListSource",
+                        "httpRequestTimeout": "00:05:00"
+                    },
+                    "sink": {
+                        "type": "AvroSink",
+                        "storeSettings": {
+                            "type": "AzureBlobFSWriteSettings"
+                        },
+                        "formatSettings": {
+                            "type": "AvroWriteSettings"
+                        }
+                    },
+                    "enableStaging": false,
+                    "translator": {
+                        "type": "TabularTranslator",
+                        "mappings": [
+                            {
+                                "source": {
+                                    "name": "Id",
+                                    "type": "Int32"
+                                },
+                                "sink": {
+                                    "name": "Id",
+                                    "type": "Int32",
+                                    "physicalType": "Int32"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "ContentTypeID",
+                                    "type": "String"
+                                },
+                                "sink": {
+                                    "name": "ContentTypeID",
+                                    "type": "String",
+                                    "physicalType": "String"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "ContentType",
+                                    "type": "String"
+                                },
+                                "sink": {
+                                    "name": "ContentType",
+                                    "type": "String",
+                                    "physicalType": "String"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "Title",
+                                    "type": "String"
+                                },
+                                "sink": {
+                                    "name": "Title",
+                                    "type": "String",
+                                    "physicalType": "String"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "Modified",
+                                    "type": "DateTime"
+                                },
+                                "sink": {
+                                    "name": "Modified",
+                                    "type": "DateTime",
+                                    "physicalType": "DateTime"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "Created",
+                                    "type": "DateTime"
+                                },
+                                "sink": {
+                                    "name": "Created",
+                                    "type": "DateTime",
+                                    "physicalType": "DateTime"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "CreatedById",
+                                    "type": "Int32"
+                                },
+                                "sink": {
+                                    "name": "CreatedById",
+                                    "type": "Int32",
+                                    "physicalType": "Int32"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "ModifiedById",
+                                    "type": "Int32"
+                                },
+                                "sink": {
+                                    "name": "ModifiedById",
+                                    "type": "Int32",
+                                    "physicalType": "Int32"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "Owshiddenversion",
+                                    "type": "Int32"
+                                },
+                                "sink": {
+                                    "name": "Owshiddenversion",
+                                    "type": "Int32",
+                                    "physicalType": "Int32"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "Version",
+                                    "type": "String"
+                                },
+                                "sink": {
+                                    "name": "Version",
+                                    "type": "String",
+                                    "physicalType": "String"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "Path",
+                                    "type": "String"
+                                },
+                                "sink": {
+                                    "name": "Path",
+                                    "type": "String",
+                                    "physicalType": "String"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "ComplianceAssetId",
+                                    "type": "String"
+                                },
+                                "sink": {
+                                    "name": "ComplianceAssetId",
+                                    "type": "String",
+                                    "physicalType": "String"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "Period",
+                                    "type": "Double"
+                                },
+                                "sink": {
+                                    "name": "Period",
+                                    "type": "Double",
+                                    "physicalType": "Double"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "Country",
+                                    "type": "String"
+                                },
+                                "sink": {
+                                    "name": "Country",
+                                    "type": "String",
+                                    "physicalType": "String"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "CurrencyValue",
+                                    "type": "Double"
+                                },
+                                "sink": {
+                                    "name": "CurrencyValue",
+                                    "type": "Double",
+                                    "physicalType": "Double"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "CurrencyValueBU",
+                                    "type": "Double"
+                                },
+                                "sink": {
+                                    "name": "CurrencyValueBU",
+                                    "type": "Double",
+                                    "physicalType": "Double"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "CurrencyValueFC",
+                                    "type": "Double"
+                                },
+                                "sink": {
+                                    "name": "CurrencyValueFC",
+                                    "type": "Double",
+                                    "physicalType": "Double"
+                                }
+                            }
+                        ],
+                        "typeConversion": true,
+                        "typeConversionSettings": {
+                            "allowDataTruncation": true,
+                            "treatBooleanAsNumber": false
+                        }
+                    }
+                },
+                "inputs": [
+                    {
+                        "referenceName": "ds_sharepointOnlineList_dimCurrency",
+                        "type": "DatasetReference"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "referenceName": "ds_avro_sharepointOnlineList_RH",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "ds_table_name": "stage_dimCurrencyRecurring.avro",
+                            "ds_folder": "stage_dimCurrency"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "create backup",
+                "type": "Copy",
+                "dependsOn": [
+                    {
+                        "activity": "loadDimCurrency",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "AvroSource",
+                        "storeSettings": {
+                            "type": "AzureBlobFSReadSettings",
+                            "recursive": true,
+                            "enablePartitionDiscovery": false
+                        }
+                    },
+                    "sink": {
+                        "type": "AvroSink",
+                        "storeSettings": {
+                            "type": "AzureBlobFSWriteSettings"
+                        },
+                        "formatSettings": {
+                            "type": "AvroWriteSettings"
+                        }
+                    },
+                    "enableStaging": false,
+                    "translator": {
+                        "type": "TabularTranslator",
+                        "typeConversion": true,
+                        "typeConversionSettings": {
+                            "allowDataTruncation": true,
+                            "treatBooleanAsNumber": false
+                        }
+                    }
+                },
+                "inputs": [
+                    {
+                        "referenceName": "ds_avro_sharepointOnlineList_RH",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "ds_table_name": "stage_dimCurrencyRecurring.avro",
+                            "ds_folder": "stage_dimCurrency"
+                        }
+                    }
+                ],
+                "outputs": [
+                    {
+                        "referenceName": "ds_avro_sharepointOnlineList_RH",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "ds_table_name": {
+                                "value": "stage_dimCurrencyRecurring@{formatDateTime(utcNow(), 'yyyyMMdd')}.avro",
+                                "type": "Expression"
+                            },
+                            "ds_folder": "stage_dimCurrency"
+                        }
+                    }
+                ]
+            }
+        ],
+        "folder": {
+            "name": "Staging/Sharepoint"
+        },
+        "annotations": [],
+        "lastPublishTime": "2024-07-01T17:13:19Z"
+    },
+    "type": "Microsoft.Synapse/workspaces/pipelines"
+}

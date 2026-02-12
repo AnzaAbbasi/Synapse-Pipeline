@@ -1,0 +1,288 @@
+{
+    "name": "pl_azets_sqlpool_costcenter",
+    "properties": {
+        "activities": [
+            {
+                "name": "Stage CostCenter NO",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "Get username to SFTP",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "pl_azets_stage_table_country",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true,
+                    "parameters": {
+                        "folderpath_destination": {
+                            "value": "@pipeline().parameters.folderpath_destination",
+                            "type": "Expression"
+                        },
+                        "schema_destination": {
+                            "value": "@pipeline().parameters.schema_destination",
+                            "type": "Expression"
+                        },
+                        "table_name_destination": "Azets_CostCenterNO",
+                        "folderpath_source": {
+                            "value": "@pipeline().parameters.folderpath_source",
+                            "type": "Expression"
+                        },
+                        "filename_prefix": {
+                            "value": "@pipeline().parameters.filename_prefix",
+                            "type": "Expression"
+                        },
+                        "country": "NO",
+                        "ftp_username": {
+                            "value": "@activity('Get username to SFTP').output.value",
+                            "type": "Expression"
+                        },
+                        "ftp_secret_name": "AzetsFTP-Password"
+                    }
+                }
+            },
+            {
+                "name": "Get username to SFTP",
+                "type": "WebActivity",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": true,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "method": "GET",
+                    "url": {
+                        "value": "https://kv-biqsr-@{pipeline().parameters.Environment}.vault.azure.net/secrets/AzetsFTP-username?api-version=7.0\n\n",
+                        "type": "Expression"
+                    },
+                    "connectVia": {
+                        "referenceName": "AutoResolveIntegrationRuntime",
+                        "type": "IntegrationRuntimeReference"
+                    },
+                    "authentication": {
+                        "type": "MSI",
+                        "resource": "https://vault.azure.net"
+                    }
+                }
+            },
+            {
+                "name": "Stage CostCenter SE",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "Get username to SFTP",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "pl_azets_stage_table_country",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true,
+                    "parameters": {
+                        "folderpath_destination": {
+                            "value": "@pipeline().parameters.folderpath_destination",
+                            "type": "Expression"
+                        },
+                        "schema_destination": {
+                            "value": "@pipeline().parameters.schema_destination",
+                            "type": "Expression"
+                        },
+                        "table_name_destination": "Azets_CostCenterSE",
+                        "folderpath_source": {
+                            "value": "@pipeline().parameters.folderpath_source",
+                            "type": "Expression"
+                        },
+                        "filename_prefix": {
+                            "value": "@pipeline().parameters.filename_prefix",
+                            "type": "Expression"
+                        },
+                        "country": "SE",
+                        "ftp_username": {
+                            "value": "@activity('Get username to SFTP').output.value",
+                            "type": "Expression"
+                        },
+                        "ftp_secret_name": "AzetsFTP-Password"
+                    }
+                }
+            },
+            {
+                "name": "Get username to SFTP DK",
+                "type": "WebActivity",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": true,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "method": "GET",
+                    "url": {
+                        "value": "https://kv-biqsr-@{pipeline().parameters.Environment}.vault.azure.net/secrets/AzetsFTPDK-username?api-version=7.0\n\n",
+                        "type": "Expression"
+                    },
+                    "connectVia": {
+                        "referenceName": "AutoResolveIntegrationRuntime",
+                        "type": "IntegrationRuntimeReference"
+                    },
+                    "authentication": {
+                        "type": "MSI",
+                        "resource": "https://vault.azure.net"
+                    }
+                }
+            },
+            {
+                "name": "Stage CostCenter SK",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "Get username to SFTP DK",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "pl_azets_stage_table_country",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true,
+                    "parameters": {
+                        "folderpath_destination": {
+                            "value": "@pipeline().parameters.folderpath_destination",
+                            "type": "Expression"
+                        },
+                        "schema_destination": {
+                            "value": "@pipeline().parameters.schema_destination",
+                            "type": "Expression"
+                        },
+                        "table_name_destination": "Azets_CostCenterDK",
+                        "folderpath_source": {
+                            "value": "SharedFolder/@{pipeline().parameters.folderpath_source}",
+                            "type": "Expression"
+                        },
+                        "filename_prefix": {
+                            "value": "@pipeline().parameters.filename_prefix",
+                            "type": "Expression"
+                        },
+                        "country": "DK",
+                        "ftp_username": {
+                            "value": "@activity('Get username to SFTP DK').output.value",
+                            "type": "Expression"
+                        },
+                        "ftp_secret_name": "AzetsFTPDK-Password"
+                    }
+                }
+            },
+            {
+                "name": "Update temp DimCostCenter",
+                "type": "SqlServerStoredProcedure",
+                "dependsOn": [
+                    {
+                        "activity": "Stage CostCenter NO",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    },
+                    {
+                        "activity": "Stage CostCenter SE",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    },
+                    {
+                        "activity": "Stage CostCenter SK",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "storedProcedureName": "[temp].[update_CostCenter]"
+                },
+                "linkedServiceName": {
+                    "referenceName": "ls_dwh_RH_source",
+                    "type": "LinkedServiceReference",
+                    "parameters": {
+                        "environment": "dev"
+                    }
+                }
+            }
+        ],
+        "parameters": {
+            "folderpath_destination": {
+                "type": "string",
+                "defaultValue": "staging/recurring/ftp_azets/CostCenter"
+            },
+            "folderpath_source": {
+                "type": "string",
+                "defaultValue": "CostCenter"
+            },
+            "filename_prefix": {
+                "type": "string",
+                "defaultValue": "CostCenter_BK"
+            },
+            "Environment": {
+                "type": "string",
+                "defaultValue": "dev"
+            },
+            "schema_destination": {
+                "type": "string",
+                "defaultValue": "stage"
+            }
+        },
+        "variables": {
+            "maxDateSE": {
+                "type": "String"
+            },
+            "maxDateNO": {
+                "type": "String"
+            },
+            "maxDateDK": {
+                "type": "String"
+            }
+        },
+        "folder": {
+            "name": "Staging/Azets/DELETE"
+        },
+        "annotations": [],
+        "lastPublishTime": "2024-10-13T15:49:30Z"
+    },
+    "type": "Microsoft.Synapse/workspaces/pipelines"
+}

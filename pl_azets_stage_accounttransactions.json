@@ -1,0 +1,278 @@
+{
+    "name": "pl_azets_stage_accounttransactions",
+    "properties": {
+        "activities": [
+            {
+                "name": "Stage AccountTransactions NO",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "Get username to SFTP",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "pl_azets_stage_accounttransactions_country",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true,
+                    "parameters": {
+                        "folder_name_staging_root": {
+                            "value": "@pipeline().parameters.folderpath_destination",
+                            "type": "Expression"
+                        },
+                        "folder_name_source": {
+                            "value": "@pipeline().parameters.folderpath_source",
+                            "type": "Expression"
+                        },
+                        "table_name_stage": "Azets_AccountTransactionsNO",
+                        "table_name_dbo": {
+                            "value": "@pipeline().parameters.table_name_dbo",
+                            "type": "Expression"
+                        },
+                        "schema_stage": {
+                            "value": "@pipeline().parameters.schema_stage",
+                            "type": "Expression"
+                        },
+                        "schema_dbo": {
+                            "value": "@pipeline().parameters.schema_dbo",
+                            "type": "Expression"
+                        },
+                        "country": "NO",
+                        "ftp_username": {
+                            "value": "@activity('Get username to SFTP').output.value",
+                            "type": "Expression"
+                        },
+                        "ftp_secret_name": "AzetsFTP-Password",
+                        "filename_prefix": {
+                            "value": "@pipeline().parameters.filename_prefix",
+                            "type": "Expression"
+                        }
+                    }
+                }
+            },
+            {
+                "name": "Get username to SFTP",
+                "type": "WebActivity",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": true,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "method": "GET",
+                    "url": {
+                        "value": "https://kv-biqsr-@{pipeline().parameters.Environment}.vault.azure.net/secrets/AzetsFTP-username?api-version=7.0\n\n",
+                        "type": "Expression"
+                    },
+                    "connectVia": {
+                        "referenceName": "AutoResolveIntegrationRuntime",
+                        "type": "IntegrationRuntimeReference"
+                    },
+                    "authentication": {
+                        "type": "MSI",
+                        "resource": "https://vault.azure.net"
+                    }
+                }
+            },
+            {
+                "name": "Get username to SFTP DK",
+                "type": "WebActivity",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": true,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "method": "GET",
+                    "url": {
+                        "value": "https://kv-biqsr-@{pipeline().parameters.Environment}.vault.azure.net/secrets/AzetsFTPDK-username?api-version=7.0\n\n",
+                        "type": "Expression"
+                    },
+                    "connectVia": {
+                        "referenceName": "AutoResolveIntegrationRuntime",
+                        "type": "IntegrationRuntimeReference"
+                    },
+                    "authentication": {
+                        "type": "MSI",
+                        "resource": "https://vault.azure.net"
+                    }
+                }
+            },
+            {
+                "name": "Stage AccountTransactions SE",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "Get username to SFTP",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "pl_azets_stage_accounttransactions_country",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true,
+                    "parameters": {
+                        "folder_name_staging_root": {
+                            "value": "@pipeline().parameters.folderpath_destination",
+                            "type": "Expression"
+                        },
+                        "folder_name_source": {
+                            "value": "@pipeline().parameters.folderpath_source",
+                            "type": "Expression"
+                        },
+                        "table_name_stage": "Azets_AccountTransactionsSE",
+                        "table_name_dbo": {
+                            "value": "@pipeline().parameters.table_name_dbo",
+                            "type": "Expression"
+                        },
+                        "schema_stage": {
+                            "value": "@pipeline().parameters.schema_stage",
+                            "type": "Expression"
+                        },
+                        "schema_dbo": {
+                            "value": "@pipeline().parameters.schema_dbo",
+                            "type": "Expression"
+                        },
+                        "country": "SE",
+                        "ftp_username": {
+                            "value": "@activity('Get username to SFTP').output.value",
+                            "type": "Expression"
+                        },
+                        "ftp_secret_name": "AzetsFTP-Password",
+                        "filename_prefix": {
+                            "value": "@pipeline().parameters.filename_prefix",
+                            "type": "Expression"
+                        }
+                    }
+                }
+            },
+            {
+                "name": "Stage AccountTransactions DK",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "Get username to SFTP DK",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "pl_azets_stage_accounttransactions_country",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true,
+                    "parameters": {
+                        "folder_name_staging_root": {
+                            "value": "@pipeline().parameters.folderpath_destination",
+                            "type": "Expression"
+                        },
+                        "folder_name_source": {
+                            "value": "SharedFolder/@{pipeline().parameters.folderpath_source}",
+                            "type": "Expression"
+                        },
+                        "table_name_stage": "Azets_AccountTransactionsDK",
+                        "table_name_dbo": {
+                            "value": "@pipeline().parameters.table_name_dbo",
+                            "type": "Expression"
+                        },
+                        "schema_stage": {
+                            "value": "@pipeline().parameters.schema_stage",
+                            "type": "Expression"
+                        },
+                        "schema_dbo": {
+                            "value": "@pipeline().parameters.schema_dbo",
+                            "type": "Expression"
+                        },
+                        "country": "DK",
+                        "ftp_username": {
+                            "value": "@activity('Get username to SFTP DK').output.value",
+                            "type": "Expression"
+                        },
+                        "ftp_secret_name": "AzetsFTPDK-Password",
+                        "filename_prefix": {
+                            "value": "@pipeline().parameters.filename_prefix",
+                            "type": "Expression"
+                        }
+                    }
+                }
+            }
+        ],
+        "parameters": {
+            "folderpath_destination": {
+                "type": "string",
+                "defaultValue": "staging/recurring/ftp_azets/CostCenter"
+            },
+            "folderpath_source": {
+                "type": "string",
+                "defaultValue": "AccountTransactions"
+            },
+            "filename_prefix": {
+                "type": "string",
+                "defaultValue": "AccountTransactions_BK"
+            },
+            "Environment": {
+                "type": "string",
+                "defaultValue": "dev"
+            },
+            "schema_stage": {
+                "type": "string",
+                "defaultValue": "stage"
+            },
+            "table_name_dbo": {
+                "type": "string",
+                "defaultValue": "FactAccountTransaction"
+            },
+            "schema_dbo": {
+                "type": "string",
+                "defaultValue": "dbo"
+            }
+        },
+        "variables": {
+            "maxDateSE": {
+                "type": "String"
+            },
+            "maxDateNO": {
+                "type": "String"
+            },
+            "maxDateDK": {
+                "type": "String"
+            }
+        },
+        "folder": {
+            "name": "Staging/Azets"
+        },
+        "annotations": [],
+        "lastPublishTime": "2024-07-01T17:18:56Z"
+    },
+    "type": "Microsoft.Synapse/workspaces/pipelines"
+}

@@ -1,0 +1,432 @@
+{
+    "name": "pl_azets_stage",
+    "properties": {
+        "description": "The pipelines takes given csv-file in given folder in Azets SFTP and copy it to temp table in sql pool and to archive folder as parquet file. ",
+        "activities": [
+            {
+                "name": "Copy to stage",
+                "description": "Copy csv file to staging area (root folder + source folder)",
+                "type": "Copy",
+                "dependsOn": [
+                    {
+                        "activity": "Set file_date",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    },
+                    {
+                        "activity": "Set file_time",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "DelimitedTextSource",
+                        "storeSettings": {
+                            "type": "SftpReadSettings",
+                            "recursive": true,
+                            "enablePartitionDiscovery": false,
+                            "disableChunking": false
+                        },
+                        "formatSettings": {
+                            "type": "DelimitedTextReadSettings"
+                        }
+                    },
+                    "sink": {
+                        "type": "ParquetSink",
+                        "storeSettings": {
+                            "type": "AzureBlobFSWriteSettings"
+                        },
+                        "formatSettings": {
+                            "type": "ParquetWriteSettings"
+                        }
+                    },
+                    "enableStaging": false,
+                    "translator": {
+                        "type": "TabularTranslator",
+                        "typeConversion": true,
+                        "typeConversionSettings": {
+                            "allowDataTruncation": true,
+                            "treatBooleanAsNumber": false
+                        }
+                    }
+                },
+                "inputs": [
+                    {
+                        "referenceName": "ds_csv_sftp_azets_source",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "folder_name": {
+                                "value": "@pipeline().parameters.folder_source",
+                                "type": "Expression"
+                            },
+                            "file_name": {
+                                "value": "@pipeline().parameters.file_source",
+                                "type": "Expression"
+                            },
+                            "Username": {
+                                "value": "@pipeline().parameters.ftp_username",
+                                "type": "Expression"
+                            },
+                            "SecretName": {
+                                "value": "@pipeline().parameters.ftp_secret_name",
+                                "type": "Expression"
+                            }
+                        }
+                    }
+                ],
+                "outputs": [
+                    {
+                        "referenceName": "ds_parquet_staging_RH",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "folder_name": {
+                                "value": "@{pipeline().parameters.folder_destination}",
+                                "type": "Expression"
+                            },
+                            "file_name": {
+                                "value": "@pipeline().parameters.file_stage",
+                                "type": "Expression"
+                            }
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "Copy to archive",
+                "type": "Copy",
+                "dependsOn": [
+                    {
+                        "activity": "Copy to stage",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "ParquetSource",
+                        "storeSettings": {
+                            "type": "AzureBlobFSReadSettings",
+                            "recursive": true,
+                            "enablePartitionDiscovery": false
+                        },
+                        "formatSettings": {
+                            "type": "ParquetReadSettings"
+                        }
+                    },
+                    "sink": {
+                        "type": "ParquetSink",
+                        "storeSettings": {
+                            "type": "AzureBlobFSWriteSettings"
+                        },
+                        "formatSettings": {
+                            "type": "ParquetWriteSettings"
+                        }
+                    },
+                    "enableStaging": false,
+                    "translator": {
+                        "type": "TabularTranslator",
+                        "typeConversion": true,
+                        "typeConversionSettings": {
+                            "allowDataTruncation": true,
+                            "treatBooleanAsNumber": false
+                        }
+                    }
+                },
+                "inputs": [
+                    {
+                        "referenceName": "ds_parquet_staging_RH",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "folder_name": {
+                                "value": "@pipeline().parameters.folder_destination",
+                                "type": "Expression"
+                            },
+                            "file_name": {
+                                "value": "@pipeline().parameters.file_stage",
+                                "type": "Expression"
+                            }
+                        }
+                    }
+                ],
+                "outputs": [
+                    {
+                        "referenceName": "ds_parquet_staging_RH",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "folder_name": {
+                                "value": "@{pipeline().parameters.folder_destination}/archive",
+                                "type": "Expression"
+                            },
+                            "file_name": {
+                                "value": "@{utcNow()}_@{pipeline().parameters.file_stage}",
+                                "type": "Expression"
+                            }
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "Copy to sql pool temp schema",
+                "type": "Copy",
+                "dependsOn": [
+                    {
+                        "activity": "Copy to archive",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 2,
+                    "retryIntervalInSeconds": 120,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "ParquetSource",
+                        "additionalColumns": [
+                            {
+                                "name": "FileDate",
+                                "value": {
+                                    "value": "@variables('file_date')",
+                                    "type": "Expression"
+                                }
+                            },
+                            {
+                                "name": "FileTime",
+                                "value": {
+                                    "value": "@variables('file_time')",
+                                    "type": "Expression"
+                                }
+                            },
+                            {
+                                "name": "FileName",
+                                "value": {
+                                    "value": "@pipeline().parameters.file_source",
+                                    "type": "Expression"
+                                }
+                            },
+                            {
+                                "name": "LoadedDateTime",
+                                "value": {
+                                    "value": "@formatDateTime(convertFromUtc(utcnow(),'W. Europe Standard Time'),'yyyy-MM-dd HH:mm:ss')",
+                                    "type": "Expression"
+                                }
+                            }
+                        ],
+                        "storeSettings": {
+                            "type": "AzureBlobFSReadSettings",
+                            "recursive": true,
+                            "enablePartitionDiscovery": false
+                        },
+                        "formatSettings": {
+                            "type": "ParquetReadSettings"
+                        }
+                    },
+                    "sink": {
+                        "type": "SqlDWSink",
+                        "writeBehavior": "Insert",
+                        "sqlWriterUseTableLock": false,
+                        "tableOption": "autoCreate",
+                        "disableMetricsCollection": false
+                    },
+                    "enableStaging": false
+                },
+                "inputs": [
+                    {
+                        "referenceName": "ds_parquet_staging_RH",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "folder_name": {
+                                "value": "@pipeline().parameters.folder_destination",
+                                "type": "Expression"
+                            },
+                            "file_name": {
+                                "value": "@pipeline().parameters.file_stage",
+                                "type": "Expression"
+                            }
+                        }
+                    }
+                ],
+                "outputs": [
+                    {
+                        "referenceName": "ds_dimtable_RH",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "schema_name": {
+                                "value": "@pipeline().parameters.schema_destination",
+                                "type": "Expression"
+                            },
+                            "table_name": {
+                                "value": "@pipeline().parameters.table_destination",
+                                "type": "Expression"
+                            }
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "Set file_datetime",
+                "type": "SetVariable",
+                "dependsOn": [
+                    {
+                        "activity": "Set file_name_base",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "variableName": "file_datetime",
+                    "value": {
+                        "value": "@first(split(last(split(variables('file_name_base'),'_')),'.'))",
+                        "type": "Expression"
+                    }
+                }
+            },
+            {
+                "name": "Set file_date",
+                "type": "SetVariable",
+                "dependsOn": [
+                    {
+                        "activity": "Set file_datetime",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "variableName": "file_date",
+                    "value": {
+                        "value": "@first(split(variables('file_datetime'),'-'))",
+                        "type": "Expression"
+                    }
+                }
+            },
+            {
+                "name": "Set file_time",
+                "type": "SetVariable",
+                "dependsOn": [
+                    {
+                        "activity": "Set file_datetime",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "variableName": "file_time",
+                    "value": {
+                        "value": "@last(split(variables('file_datetime'),'-'))",
+                        "type": "Expression"
+                    }
+                }
+            },
+            {
+                "name": "Set file_name_base",
+                "type": "SetVariable",
+                "dependsOn": [],
+                "policy": {
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "variableName": "file_name_base",
+                    "value": {
+                        "value": "@first(split(pipeline().parameters.file_source,'.'))",
+                        "type": "Expression"
+                    }
+                }
+            }
+        ],
+        "parameters": {
+            "file_source": {
+                "type": "string"
+            },
+            "file_stage": {
+                "type": "string"
+            },
+            "folder_source": {
+                "type": "string"
+            },
+            "table_destination": {
+                "type": "string"
+            },
+            "folder_destination": {
+                "type": "string"
+            },
+            "folder_logging_deletedfiles": {
+                "type": "string",
+                "defaultValue": "synapse/logging"
+            },
+            "schema_destination": {
+                "type": "string"
+            },
+            "ftp_username": {
+                "type": "string"
+            },
+            "ftp_secret_name": {
+                "type": "string"
+            }
+        },
+        "variables": {
+            "file_date": {
+                "type": "String"
+            },
+            "file_time": {
+                "type": "String"
+            },
+            "file_datetime": {
+                "type": "String"
+            },
+            "file_name_base": {
+                "type": "String"
+            }
+        },
+        "folder": {
+            "name": "Staging/Azets"
+        },
+        "annotations": [],
+        "lastPublishTime": "2024-07-01T17:17:05Z"
+    },
+    "type": "Microsoft.Synapse/workspaces/pipelines"
+}

@@ -1,0 +1,242 @@
+{
+    "name": "pl_process_pbi_dataset",
+    "properties": {
+        "activities": [
+            {
+                "name": "Refresh Dataset",
+                "type": "WebActivity",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "method": "POST",
+                    "url": {
+                        "value": "https://api.powerbi.com/v1.0/myorg/groups/@{pipeline().parameters.workspace_id}/datasets/@{pipeline().parameters.dataset_id}/refreshes",
+                        "type": "Expression"
+                    },
+                    "connectVia": {
+                        "referenceName": "AutoResolveIntegrationRuntime",
+                        "type": "IntegrationRuntimeReference"
+                    },
+                    "body": {
+                        "value": "{}",
+                        "type": "Expression"
+                    },
+                    "authentication": {
+                        "type": "ServicePrincipal",
+                        "userTenant": "83f92396-24e6-4821-8bf1-ffe96e54e962",
+                        "username": {
+                            "value": "@pipeline().parameters.power_bi_application_id",
+                            "type": "Expression"
+                        },
+                        "resource": "https://analysis.windows.net/powerbi/api",
+                        "password": {
+                            "type": "AzureKeyVaultSecret",
+                            "store": {
+                                "referenceName": "ls_keyvault_biqsr",
+                                "type": "LinkedServiceReference",
+                                "parameters": {
+                                    "environment": "dev"
+                                }
+                            },
+                            "secretName": "PowerBIApplicationSecret"
+                        }
+                    }
+                }
+            },
+            {
+                "name": "refresh_status to unknown",
+                "type": "SetVariable",
+                "dependsOn": [
+                    {
+                        "activity": "Refresh Dataset",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "variableName": "refresh_status",
+                    "value": {
+                        "value": "'unknown'",
+                        "type": "Expression"
+                    }
+                }
+            },
+            {
+                "name": "Wait until refresh is finished",
+                "type": "Until",
+                "dependsOn": [
+                    {
+                        "activity": "refresh_status to unknown",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "userProperties": [],
+                "typeProperties": {
+                    "expression": {
+                        "value": "@not(equals(variables('refresh_status'), 'Unknown'))",
+                        "type": "Expression"
+                    },
+                    "activities": [
+                        {
+                            "name": "Get refresh status",
+                            "type": "WebActivity",
+                            "dependsOn": [],
+                            "policy": {
+                                "timeout": "7.00:00:00",
+                                "retry": 0,
+                                "retryIntervalInSeconds": 30,
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "method": "GET",
+                                "url": {
+                                    "value": "https://api.powerbi.com/v1.0/myorg/groups/@{pipeline().parameters.workspace_id}/datasets/@{pipeline().parameters.dataset_id}/refreshes?$top=1",
+                                    "type": "Expression"
+                                },
+                                "connectVia": {
+                                    "referenceName": "AutoResolveIntegrationRuntime",
+                                    "type": "IntegrationRuntimeReference"
+                                },
+                                "authentication": {
+                                    "type": "ServicePrincipal",
+                                    "userTenant": "83f92396-24e6-4821-8bf1-ffe96e54e962",
+                                    "username": {
+                                        "value": "@pipeline().parameters.power_bi_application_id",
+                                        "type": "Expression"
+                                    },
+                                    "resource": "https://analysis.windows.net/powerbi/api",
+                                    "password": {
+                                        "type": "AzureKeyVaultSecret",
+                                        "store": {
+                                            "referenceName": "ls_keyvault_biqsr",
+                                            "type": "LinkedServiceReference",
+                                            "parameters": {
+                                                "environment": "dev"
+                                            }
+                                        },
+                                        "secretName": "PowerBIApplicationSecret"
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "name": "Update refresh_status",
+                            "type": "SetVariable",
+                            "dependsOn": [
+                                {
+                                    "activity": "Get refresh status",
+                                    "dependencyConditions": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            ],
+                            "policy": {
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "variableName": "refresh_status",
+                                "value": {
+                                    "value": "@activity('Get refresh status').output.value[0].status",
+                                    "type": "Expression"
+                                }
+                            }
+                        },
+                        {
+                            "name": "Wait for 30 seconds",
+                            "type": "Wait",
+                            "dependsOn": [
+                                {
+                                    "activity": "Update refresh_status",
+                                    "dependencyConditions": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            ],
+                            "userProperties": [],
+                            "typeProperties": {
+                                "waitTimeInSeconds": 30
+                            }
+                        }
+                    ],
+                    "timeout": "7.00:00:00"
+                }
+            },
+            {
+                "name": "Checking refresh status",
+                "type": "IfCondition",
+                "dependsOn": [
+                    {
+                        "activity": "Wait until refresh is finished",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "userProperties": [],
+                "typeProperties": {
+                    "expression": {
+                        "value": "@equals(variables('refresh_status'),'Completed')",
+                        "type": "Expression"
+                    },
+                    "ifFalseActivities": [
+                        {
+                            "name": "Fail pipeline",
+                            "type": "Fail",
+                            "dependsOn": [],
+                            "userProperties": [],
+                            "typeProperties": {
+                                "message": "Processing of dataset failed",
+                                "errorCode": "400"
+                            }
+                        }
+                    ]
+                }
+            }
+        ],
+        "parameters": {
+            "dataset_id": {
+                "type": "string",
+                "defaultValue": "6e41ee4b-a68c-4db6-81fe-3560b0ee7267"
+            },
+            "power_bi_application_id": {
+                "type": "string",
+                "defaultValue": "eaf880af-7aa4-4087-8ef1-d2e4b56ac469"
+            },
+            "workspace_id": {
+                "type": "string",
+                "defaultValue": "ffcdae58-0a23-449f-b3db-31463ea64f10"
+            }
+        },
+        "variables": {
+            "refresh_status": {
+                "type": "String",
+                "defaultValue": "unknown"
+            }
+        },
+        "folder": {
+            "name": "Operation"
+        },
+        "annotations": [],
+        "lastPublishTime": "2024-07-01T17:10:45Z"
+    },
+    "type": "Microsoft.Synapse/workspaces/pipelines"
+}

@@ -1,0 +1,76 @@
+{
+    "name": "pl_dimSiteRecurring_dimSite_addNewData_transformLoad",
+    "properties": {
+        "activities": [
+            {
+                "name": "df_dimSiteRecurring_dimSite_addNewData_transformLoad",
+                "type": "ExecuteDataFlow",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "1.00:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "dataflow": {
+                        "referenceName": "recurringHistoricalJoin",
+                        "type": "DataFlowReference",
+                        "parameters": {
+                            "HashColumns": "'MainBranch,Country,SiteNumber'"
+                        },
+                        "datasetParameters": {
+                            "DimSite": {
+                                "schema_name": "dbo",
+                                "table_name": "DimSite"
+                            },
+                            "DimSiteRecurring": {
+                                "schema_name": "temp",
+                                "table_name": "DimSiteRecurring"
+                            },
+                            "MaxSurrogateKey": {
+                                "schema_name": "dbo",
+                                "table_name": "DimSite"
+                            },
+                            "MaxRetainedKey": {
+                                "schema_name": "dbo",
+                                "table_name": "DimSite"
+                            },
+                            "dboDimSite": {
+                                "schema_name": "dbo",
+                                "table_name": "DimSite"
+                            },
+                            "dboDimSiteUpdate": {
+                                "schema_name": "dbo",
+                                "table_name": "DimSite"
+                            }
+                        }
+                    },
+                    "staging": {
+                        "linkedService": {
+                            "referenceName": "stbiqsrdev",
+                            "type": "LinkedServiceReference",
+                            "parameters": {
+                                "environment": "dev"
+                            }
+                        },
+                        "folderPath": "synapse"
+                    },
+                    "compute": {
+                        "coreCount": 8,
+                        "computeType": "General"
+                    },
+                    "traceLevel": "Fine"
+                }
+            }
+        ],
+        "folder": {
+            "name": "Dimension/DimSite"
+        },
+        "annotations": [],
+        "lastPublishTime": "2024-07-01T17:17:38Z"
+    },
+    "type": "Microsoft.Synapse/workspaces/pipelines"
+}

@@ -1,0 +1,254 @@
+{
+    "name": "pl_sharepoint_stage_dimSiteSupplement_load",
+    "properties": {
+        "activities": [
+            {
+                "name": "loadDimSiteSupplement",
+                "type": "Copy",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "SharePointOnlineListSource",
+                        "httpRequestTimeout": "00:05:00"
+                    },
+                    "sink": {
+                        "type": "AvroSink",
+                        "storeSettings": {
+                            "type": "AzureBlobFSWriteSettings"
+                        },
+                        "formatSettings": {
+                            "type": "AvroWriteSettings"
+                        }
+                    },
+                    "enableStaging": false,
+                    "translator": {
+                        "type": "TabularTranslator",
+                        "mappings": [
+                            {
+                                "source": {
+                                    "name": "Id",
+                                    "type": "Int32"
+                                },
+                                "sink": {
+                                    "name": "Id",
+                                    "type": "Int32"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "Title",
+                                    "type": "String"
+                                },
+                                "sink": {
+                                    "name": "Title",
+                                    "type": "String"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "MainBranch",
+                                    "type": "String"
+                                },
+                                "sink": {
+                                    "name": "MainBranch",
+                                    "type": "String"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "Country",
+                                    "type": "String"
+                                },
+                                "sink": {
+                                    "name": "Country",
+                                    "type": "String"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "SiteNumber",
+                                    "type": "Double"
+                                },
+                                "sink": {
+                                    "name": "SiteNumber",
+                                    "type": "Double"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "ReportingLevel1",
+                                    "type": "String"
+                                },
+                                "sink": {
+                                    "name": "ReportingLevel1",
+                                    "type": "String"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "ReportingLevel2",
+                                    "type": "String"
+                                },
+                                "sink": {
+                                    "name": "ReportingLevel2",
+                                    "type": "String"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "HQReportingOwnFZ",
+                                    "type": "String"
+                                },
+                                "sink": {
+                                    "name": "HQReportingOwnFZ",
+                                    "type": "String"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "SiteCluster1",
+                                    "type": "String"
+                                },
+                                "sink": {
+                                    "name": "SiteCluster1",
+                                    "type": "String"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "SiteCluster2",
+                                    "type": "String"
+                                },
+                                "sink": {
+                                    "name": "SiteCluster2",
+                                    "type": "String"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "Org2020",
+                                    "type": "String"
+                                },
+                                "sink": {
+                                    "name": "Org2020",
+                                    "type": "String"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "name": "Franchise",
+                                    "type": "String"
+                                },
+                                "sink": {
+                                    "name": "Franchise",
+                                    "type": "String"
+                                }
+                            }
+                        ]
+                    }
+                },
+                "inputs": [
+                    {
+                        "referenceName": "ds_sharepointOnline_dimSupplement",
+                        "type": "DatasetReference"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "referenceName": "ds_avro_sharepointOnlineList_RH",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "ds_table_name": "stage_dimSiteSupplementRecurring.avro",
+                            "ds_folder": "stage_dimSiteSupplement"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "create backup",
+                "type": "Copy",
+                "dependsOn": [
+                    {
+                        "activity": "loadDimSiteSupplement",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "AvroSource",
+                        "storeSettings": {
+                            "type": "AzureBlobFSReadSettings",
+                            "recursive": true,
+                            "enablePartitionDiscovery": false
+                        }
+                    },
+                    "sink": {
+                        "type": "AvroSink",
+                        "storeSettings": {
+                            "type": "AzureBlobFSWriteSettings"
+                        },
+                        "formatSettings": {
+                            "type": "AvroWriteSettings"
+                        }
+                    },
+                    "enableStaging": false,
+                    "translator": {
+                        "type": "TabularTranslator",
+                        "typeConversion": true,
+                        "typeConversionSettings": {
+                            "allowDataTruncation": true,
+                            "treatBooleanAsNumber": false
+                        }
+                    }
+                },
+                "inputs": [
+                    {
+                        "referenceName": "ds_avro_sharepointOnlineList_RH",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "ds_table_name": "stage_dimSiteSupplementRecurring.avro",
+                            "ds_folder": "stage_dimSiteSupplement"
+                        }
+                    }
+                ],
+                "outputs": [
+                    {
+                        "referenceName": "ds_avro_sharepointOnlineList_RH",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "ds_table_name": {
+                                "value": "stage_dimSiteSupplementRecurring@{formatDateTime(utcNow(), 'yyyyMMdd')}.avro",
+                                "type": "Expression"
+                            },
+                            "ds_folder": "stage_dimSiteSupplement"
+                        }
+                    }
+                ]
+            }
+        ],
+        "folder": {
+            "name": "Staging/Sharepoint"
+        },
+        "annotations": [],
+        "lastPublishTime": "2024-07-01T17:13:18Z"
+    },
+    "type": "Microsoft.Synapse/workspaces/pipelines"
+}

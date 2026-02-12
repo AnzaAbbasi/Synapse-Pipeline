@@ -1,0 +1,528 @@
+{
+    "name": "pl_ad_dwh_rls",
+    "properties": {
+        "activities": [
+            {
+                "name": "Get all groups",
+                "description": "Gives all groups in AD directory",
+                "type": "Copy",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "RestSource",
+                        "httpRequestTimeout": "00:01:40",
+                        "requestInterval": "00.00:00:00.010",
+                        "requestMethod": "GET",
+                        "paginationRules": {
+                            "AbsoluteUrl": "$['@odata.nextLink']"
+                        }
+                    },
+                    "sink": {
+                        "type": "DelimitedTextSink",
+                        "storeSettings": {
+                            "type": "AzureBlobFSWriteSettings"
+                        },
+                        "formatSettings": {
+                            "type": "DelimitedTextWriteSettings",
+                            "quoteAllText": true,
+                            "fileExtension": ".txt"
+                        }
+                    },
+                    "enableStaging": false,
+                    "translator": {
+                        "type": "TabularTranslator",
+                        "mappings": [
+                            {
+                                "source": {
+                                    "path": "['id']"
+                                },
+                                "sink": {
+                                    "name": "id",
+                                    "type": "String"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "path": "['displayName']"
+                                },
+                                "sink": {
+                                    "name": "displayName",
+                                    "type": "String"
+                                }
+                            },
+                            {
+                                "source": {
+                                    "path": "['mail']"
+                                },
+                                "sink": {
+                                    "name": "mail",
+                                    "type": "String"
+                                }
+                            }
+                        ],
+                        "collectionReference": "$['value']"
+                    }
+                },
+                "inputs": [
+                    {
+                        "referenceName": "ds_restGraph",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "relative_url": "groups"
+                        }
+                    }
+                ],
+                "outputs": [
+                    {
+                        "referenceName": "ds_ad_staging_getGroups",
+                        "type": "DatasetReference"
+                    }
+                ]
+            },
+            {
+                "name": "Load Groups to DWH",
+                "type": "Copy",
+                "dependsOn": [
+                    {
+                        "activity": "Get all groups",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 2,
+                    "retryIntervalInSeconds": 120,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "DelimitedTextSource",
+                        "storeSettings": {
+                            "type": "AzureBlobFSReadSettings",
+                            "recursive": true,
+                            "enablePartitionDiscovery": false
+                        },
+                        "formatSettings": {
+                            "type": "DelimitedTextReadSettings"
+                        }
+                    },
+                    "sink": {
+                        "type": "SqlDWSink",
+                        "preCopyScript": "IF\nobject_id('temp.rlsGroups')\nIS NOT NULL\nEXEC('TRUNCATE TABLE temp.rlsGroups')",
+                        "writeBehavior": "Insert",
+                        "sqlWriterUseTableLock": false,
+                        "tableOption": "autoCreate",
+                        "disableMetricsCollection": false
+                    },
+                    "enableStaging": false,
+                    "translator": {
+                        "type": "TabularTranslator",
+                        "typeConversion": true,
+                        "typeConversionSettings": {
+                            "allowDataTruncation": true,
+                            "treatBooleanAsNumber": false
+                        }
+                    }
+                },
+                "inputs": [
+                    {
+                        "referenceName": "ds_ad_staging_getGroups",
+                        "type": "DatasetReference"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "referenceName": "ds_dimtable_RH",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "schema_name": "temp",
+                            "table_name": "rlsGroups"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "Select Groups from DWH",
+                "type": "Lookup",
+                "dependsOn": [
+                    {
+                        "activity": "Truncate Users Table",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 2,
+                    "retryIntervalInSeconds": 120,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "SqlDWSource",
+                        "sqlReaderQuery": "SELECT [id]\n      ,[displayName]\n      ,[mail]\n  FROM [temp].[rlsGroups]",
+                        "queryTimeout": "02:00:00",
+                        "partitionOption": "None"
+                    },
+                    "dataset": {
+                        "referenceName": "ds_dimtable_RH",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "schema_name": "temp",
+                            "table_name": "rlsGroups"
+                        }
+                    },
+                    "firstRowOnly": false
+                }
+            },
+            {
+                "name": "Get users from each group",
+                "type": "ForEach",
+                "dependsOn": [
+                    {
+                        "activity": "Select Groups from DWH",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "userProperties": [],
+                "typeProperties": {
+                    "items": {
+                        "value": "@activity('Select Groups from DWH').output.value",
+                        "type": "Expression"
+                    },
+                    "isSequential": false,
+                    "activities": [
+                        {
+                            "name": "Get users to CSV",
+                            "type": "Copy",
+                            "dependsOn": [],
+                            "policy": {
+                                "timeout": "7.00:00:00",
+                                "retry": 0,
+                                "retryIntervalInSeconds": 30,
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "source": {
+                                    "type": "RestSource",
+                                    "httpRequestTimeout": "00:01:40",
+                                    "requestInterval": "00.00:00:00.010",
+                                    "requestMethod": "GET",
+                                    "paginationRules": {
+                                        "supportRFC5988": "true",
+                                        "AbsoluteUrl": "$['@odata.nextLink']"
+                                    }
+                                },
+                                "sink": {
+                                    "type": "DelimitedTextSink",
+                                    "storeSettings": {
+                                        "type": "AzureBlobFSWriteSettings"
+                                    },
+                                    "formatSettings": {
+                                        "type": "DelimitedTextWriteSettings",
+                                        "quoteAllText": true,
+                                        "fileExtension": ".txt"
+                                    }
+                                },
+                                "enableStaging": false,
+                                "translator": {
+                                    "type": "TabularTranslator",
+                                    "mappings": [
+                                        {
+                                            "source": {
+                                                "path": "['id']"
+                                            },
+                                            "sink": {
+                                                "name": "id",
+                                                "type": "String"
+                                            }
+                                        },
+                                        {
+                                            "source": {
+                                                "path": "['displayName']"
+                                            },
+                                            "sink": {
+                                                "name": "displayName",
+                                                "type": "String"
+                                            }
+                                        },
+                                        {
+                                            "source": {
+                                                "path": "['userPrincipalName']"
+                                            },
+                                            "sink": {
+                                                "name": "mail",
+                                                "type": "String"
+                                            }
+                                        }
+                                    ],
+                                    "collectionReference": "$['value']"
+                                }
+                            },
+                            "inputs": [
+                                {
+                                    "referenceName": "ds_restGraph",
+                                    "type": "DatasetReference",
+                                    "parameters": {
+                                        "relative_url": {
+                                            "value": "groups/@{item().Id}/members",
+                                            "type": "Expression"
+                                        }
+                                    }
+                                }
+                            ],
+                            "outputs": [
+                                {
+                                    "referenceName": "ds_ad_staging_getUsers",
+                                    "type": "DatasetReference",
+                                    "parameters": {
+                                        "filename": {
+                                            "value": "@{item().displayName}.csv",
+                                            "type": "Expression"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "Load users to DWH",
+                            "type": "Copy",
+                            "dependsOn": [
+                                {
+                                    "activity": "Get users to CSV",
+                                    "dependencyConditions": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            ],
+                            "policy": {
+                                "timeout": "7.00:00:00",
+                                "retry": 2,
+                                "retryIntervalInSeconds": 120,
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "source": {
+                                    "type": "DelimitedTextSource",
+                                    "additionalColumns": [
+                                        {
+                                            "name": "groupName",
+                                            "value": {
+                                                "value": "@item().displayName",
+                                                "type": "Expression"
+                                            }
+                                        }
+                                    ],
+                                    "storeSettings": {
+                                        "type": "AzureBlobFSReadSettings",
+                                        "recursive": true,
+                                        "enablePartitionDiscovery": false
+                                    },
+                                    "formatSettings": {
+                                        "type": "DelimitedTextReadSettings"
+                                    }
+                                },
+                                "sink": {
+                                    "type": "SqlDWSink",
+                                    "writeBehavior": "Insert",
+                                    "sqlWriterUseTableLock": false,
+                                    "tableOption": "autoCreate",
+                                    "disableMetricsCollection": false
+                                },
+                                "enableStaging": false,
+                                "translator": {
+                                    "type": "TabularTranslator",
+                                    "typeConversion": true,
+                                    "typeConversionSettings": {
+                                        "allowDataTruncation": true,
+                                        "treatBooleanAsNumber": false
+                                    }
+                                }
+                            },
+                            "inputs": [
+                                {
+                                    "referenceName": "ds_ad_staging_getUsers",
+                                    "type": "DatasetReference",
+                                    "parameters": {
+                                        "filename": {
+                                            "value": "@{item().displayName}.csv",
+                                            "type": "Expression"
+                                        }
+                                    }
+                                }
+                            ],
+                            "outputs": [
+                                {
+                                    "referenceName": "ds_dimtable_RH",
+                                    "type": "DatasetReference",
+                                    "parameters": {
+                                        "schema_name": "temp",
+                                        "table_name": "rlsUsers"
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            {
+                "name": "Truncate Users Table",
+                "type": "Lookup",
+                "dependsOn": [
+                    {
+                        "activity": "Load Groups to DWH",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 2,
+                    "retryIntervalInSeconds": 120,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "SqlDWSource",
+                        "sqlReaderQuery": "IF\nobject_id('temp.rlsUsers')\nIS NOT NULL\nEXEC('TRUNCATE TABLE temp.rlsUsers')\n\nSELECT 1",
+                        "queryTimeout": "02:00:00",
+                        "partitionOption": "None"
+                    },
+                    "dataset": {
+                        "referenceName": "ds_dimtable_RH",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "schema_name": "temp",
+                            "table_name": "rlsUsers"
+                        }
+                    },
+                    "firstRowOnly": false
+                }
+            },
+            {
+                "name": "Unwrap Users",
+                "type": "SqlServerStoredProcedure",
+                "dependsOn": [
+                    {
+                        "activity": "Get users from each group",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 2,
+                    "retryIntervalInSeconds": 120,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "storedProcedureName": "[dbo].[unwrapUsers]"
+                },
+                "linkedServiceName": {
+                    "referenceName": "ls_dwh_RH_source",
+                    "type": "LinkedServiceReference",
+                    "parameters": {
+                        "environment": "dev"
+                    }
+                }
+            },
+            {
+                "name": "Move from temp table to dbo",
+                "type": "Copy",
+                "dependsOn": [
+                    {
+                        "activity": "Unwrap Users",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 2,
+                    "retryIntervalInSeconds": 120,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "SqlDWSource",
+                        "queryTimeout": "02:00:00",
+                        "partitionOption": "None"
+                    },
+                    "sink": {
+                        "type": "SqlDWSink",
+                        "preCopyScript": "IF\nobject_id('dbo.rlsUsers')\nIS NOT NULL\nEXEC('TRUNCATE TABLE dbo.rlsUsers')",
+                        "writeBehavior": "Insert",
+                        "sqlWriterUseTableLock": false,
+                        "tableOption": "autoCreate",
+                        "disableMetricsCollection": false
+                    },
+                    "enableStaging": false,
+                    "translator": {
+                        "type": "TabularTranslator",
+                        "typeConversion": true,
+                        "typeConversionSettings": {
+                            "allowDataTruncation": true,
+                            "treatBooleanAsNumber": false
+                        }
+                    }
+                },
+                "inputs": [
+                    {
+                        "referenceName": "ds_dimtable_RH",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "schema_name": "temp",
+                            "table_name": "rlsUsers"
+                        }
+                    }
+                ],
+                "outputs": [
+                    {
+                        "referenceName": "ds_dimtable_RH",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "schema_name": "dbo",
+                            "table_name": "rlsUsers"
+                        }
+                    }
+                ]
+            }
+        ],
+        "folder": {
+            "name": "RLS"
+        },
+        "annotations": [],
+        "lastPublishTime": "2024-07-01T17:17:03Z"
+    },
+    "type": "Microsoft.Synapse/workspaces/pipelines"
+}

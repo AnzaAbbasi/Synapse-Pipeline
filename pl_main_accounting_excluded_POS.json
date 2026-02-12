@@ -1,0 +1,680 @@
+{
+    "name": "pl_main_accounting_excluded_POS",
+    "properties": {
+        "activities": [
+            {
+                "name": "Resume sqlpool",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "Set PowerBIApplicationId variable",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    },
+                    {
+                        "activity": "Set PowerBIApplicationSecret",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    },
+                    {
+                        "activity": "Set PowerBIWorkspaceId",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    },
+                    {
+                        "activity": "Set PowerBIDatasetId",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    },
+                    {
+                        "activity": "SetSubscriptionId",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "run_pl_sqlpool_resume",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true,
+                    "parameters": {
+                        "Environment": {
+                            "value": "@variables('Environment')",
+                            "type": "Expression"
+                        },
+                        "SubscriptionID": {
+                            "value": "@variables('SubscriptionId')",
+                            "type": "Expression"
+                        }
+                    }
+                }
+            },
+            {
+                "name": "FactAccountTransaction",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "DimSite",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    },
+                    {
+                        "activity": "DimAccount",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    },
+                    {
+                        "activity": "DimCurrency",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    },
+                    {
+                        "activity": "RLS",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "run_pl_azets_dbo_FactAccountTransaction_load",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true,
+                    "parameters": {
+                        "Environment": {
+                            "value": "@variables('Environment')",
+                            "type": "Expression"
+                        }
+                    }
+                }
+            },
+            {
+                "name": "Cost center to temp",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "Resume sqlpool",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "run_pl_azets_sqlpool_costcenter",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true,
+                    "parameters": {
+                        "Environment": {
+                            "value": "@variables('Environment')",
+                            "type": "Expression"
+                        }
+                    }
+                }
+            },
+            {
+                "name": "Account to temp",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "Resume sqlpool",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "run_pl_azets_sqlpool_dimaccount",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true,
+                    "parameters": {
+                        "Environment": {
+                            "value": "@variables('Environment')",
+                            "type": "Expression"
+                        }
+                    }
+                }
+            },
+            {
+                "name": "Site Dely to temp",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "Cost center to temp",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    },
+                    {
+                        "activity": "Staging DimSiteSupplement",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "run_pl_stage_tempDimSiteRecurring_getDimSiteColumns",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true
+                }
+            },
+            {
+                "name": "DimSite",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "Site Dely to temp",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "run_pl_dimSiteRecurring_dimSite_addNewData_transformLoad",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true
+                }
+            },
+            {
+                "name": "DimAccount",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "Account to temp",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "run_pl_temp_dbo_dimaccount_upsert",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true,
+                    "parameters": {
+                        "Environment": {
+                            "value": "@variables('Environment')",
+                            "type": "Expression"
+                        }
+                    }
+                }
+            },
+            {
+                "name": "Process Power BI Dataset",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "FactAccountTransaction",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "run_pl_process_pbi_dataset",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true,
+                    "parameters": {
+                        "PowerBIApplicationID": {
+                            "value": "@variables('PowerBIApplicationId')",
+                            "type": "Expression"
+                        },
+                        "PowerBIDatasetID": {
+                            "value": "@variables('PowerBIDatasetId')",
+                            "type": "Expression"
+                        },
+                        "PowerBIWorkspaceID": {
+                            "value": "@variables('PowerBIWorkspaceId')",
+                            "type": "Expression"
+                        }
+                    }
+                }
+            },
+            {
+                "name": "Set environment variabel",
+                "type": "SetVariable",
+                "dependsOn": [],
+                "policy": {
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "variableName": "Environment",
+                    "value": {
+                        "value": "@last(split(pipeline().DataFactory,'-'))",
+                        "type": "Expression"
+                    }
+                }
+            },
+            {
+                "name": "Get PowerBIApplicationId",
+                "type": "WebActivity",
+                "dependsOn": [
+                    {
+                        "activity": "Set environment variabel",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "method": "GET",
+                    "url": {
+                        "value": "https://kv-biqsr-@{variables('Environment')}.vault.azure.net/secrets/PowerBIApplicationId?api-version=7.0\n\n",
+                        "type": "Expression"
+                    },
+                    "connectVia": {
+                        "referenceName": "AutoResolveIntegrationRuntime",
+                        "type": "IntegrationRuntimeReference"
+                    },
+                    "authentication": {
+                        "type": "MSI",
+                        "resource": "https://vault.azure.net"
+                    }
+                }
+            },
+            {
+                "name": "Set PowerBIApplicationId variable",
+                "type": "SetVariable",
+                "dependsOn": [
+                    {
+                        "activity": "Get PowerBIApplicationId",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "variableName": "PowerBIApplicationId",
+                    "value": {
+                        "value": "@activity('Get PowerBIApplicationId').output.value",
+                        "type": "Expression"
+                    }
+                }
+            },
+            {
+                "name": "Get PowerBIApplicationSecret",
+                "type": "WebActivity",
+                "dependsOn": [
+                    {
+                        "activity": "Set environment variabel",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": true,
+                    "secureInput": true
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "method": "GET",
+                    "url": {
+                        "value": "https://kv-biqsr-@{variables('Environment')}.vault.azure.net/secrets/PowerBIApplicationSecret?api-version=7.0\n\n",
+                        "type": "Expression"
+                    },
+                    "connectVia": {
+                        "referenceName": "AutoResolveIntegrationRuntime",
+                        "type": "IntegrationRuntimeReference"
+                    },
+                    "authentication": {
+                        "type": "MSI",
+                        "resource": "https://vault.azure.net"
+                    }
+                }
+            },
+            {
+                "name": "Set PowerBIApplicationSecret",
+                "type": "SetVariable",
+                "dependsOn": [
+                    {
+                        "activity": "Get PowerBIApplicationSecret",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "variableName": "PowerBIApplicationSecret",
+                    "value": {
+                        "value": "@activity('Get PowerBIApplicationSecret').output.value",
+                        "type": "Expression"
+                    }
+                }
+            },
+            {
+                "name": "Get PowerBIWorkspaceId",
+                "type": "WebActivity",
+                "dependsOn": [
+                    {
+                        "activity": "Set environment variabel",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "method": "GET",
+                    "url": {
+                        "value": "https://kv-biqsr-@{variables('Environment')}.vault.azure.net/secrets/PowerBIWorkspaceId?api-version=7.0\n\n",
+                        "type": "Expression"
+                    },
+                    "connectVia": {
+                        "referenceName": "AutoResolveIntegrationRuntime",
+                        "type": "IntegrationRuntimeReference"
+                    },
+                    "authentication": {
+                        "type": "MSI",
+                        "resource": "https://vault.azure.net"
+                    }
+                }
+            },
+            {
+                "name": "Set PowerBIWorkspaceId",
+                "type": "SetVariable",
+                "dependsOn": [
+                    {
+                        "activity": "Get PowerBIWorkspaceId",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "variableName": "PowerBIWorkspaceId",
+                    "value": {
+                        "value": "@activity('Get PowerBIWorkspaceId').output.value",
+                        "type": "Expression"
+                    }
+                }
+            },
+            {
+                "name": "Get PowerBIDatasetId",
+                "type": "WebActivity",
+                "dependsOn": [
+                    {
+                        "activity": "Set environment variabel",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": true,
+                    "secureInput": true
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "method": "GET",
+                    "url": {
+                        "value": "https://kv-biqsr-@{variables('Environment')}.vault.azure.net/secrets/PowerBIDatasetId?api-version=7.0\n\n",
+                        "type": "Expression"
+                    },
+                    "connectVia": {
+                        "referenceName": "AutoResolveIntegrationRuntime",
+                        "type": "IntegrationRuntimeReference"
+                    },
+                    "authentication": {
+                        "type": "MSI",
+                        "resource": "https://vault.azure.net"
+                    }
+                }
+            },
+            {
+                "name": "Set PowerBIDatasetId",
+                "type": "SetVariable",
+                "dependsOn": [
+                    {
+                        "activity": "Get PowerBIDatasetId",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "variableName": "PowerBIDatasetId",
+                    "value": {
+                        "value": "@activity('Get PowerBIDatasetId').output.value",
+                        "type": "Expression"
+                    }
+                }
+            },
+            {
+                "name": "SetSubscriptionId",
+                "type": "SetVariable",
+                "dependsOn": [
+                    {
+                        "activity": "Set environment variabel",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "variableName": "SubscriptionId",
+                    "value": "fd5c7559-317d-4792-be01-35e2b67ecfb1"
+                }
+            },
+            {
+                "name": "Staging DimSiteSupplement",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "Resume sqlpool",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "run_pl_sharepoint_stage_dimSiteSupplement",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true
+                }
+            },
+            {
+                "name": "Staging DimCurrency",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "Resume sqlpool",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "run_pl_sharepoint_stage_dimCurrency",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true
+                }
+            },
+            {
+                "name": "DimCurrency",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "Staging DimCurrency",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "run_pl_stage_DimCurrency_load",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true
+                }
+            },
+            {
+                "name": "RLS",
+                "type": "ExecutePipeline",
+                "dependsOn": [
+                    {
+                        "activity": "Resume sqlpool",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "pl_ad_dwh_rls",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true
+                }
+            }
+        ],
+        "variables": {
+            "Environment": {
+                "type": "String",
+                "defaultValue": "dev"
+            },
+            "PowerBIApplicationId": {
+                "type": "String"
+            },
+            "PowerBIApplicationSecret": {
+                "type": "String"
+            },
+            "PowerBIWorkspaceId": {
+                "type": "String"
+            },
+            "PowerBIDatasetId": {
+                "type": "String"
+            },
+            "SubscriptionId": {
+                "type": "String"
+            }
+        },
+        "folder": {
+            "name": "Main"
+        },
+        "annotations": [],
+        "lastPublishTime": "2025-03-31T13:37:07Z"
+    },
+    "type": "Microsoft.Synapse/workspaces/pipelines"
+}
